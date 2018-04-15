@@ -11,11 +11,19 @@
 
 ### Implementations
 
-1. Phoneme Classification
-    1. Prenet + CBHG in paper:
-        - [Tacotron: Towards End-to-End Speech Synthesis](https://arxiv.org/abs/1703.10135)
-    2. Will be implemented paper : 
-        - [Maxout Convnet](https://link.springer.com/content/pdf/10.1186%2Fs13636-015-0068-3.pdf)
+#### sources
+
+1. Higher Level Implementation with *overrided pytorch utils*
+2. WILL BE UPDATED
+    - Checkpoint plugin
+    - Tensorboard plugin 
+    
+#### Phoneme Classification
+
+1. Prenet + CBHG in paper:
+    - [Tacotron: Towards End-to-End Speech Synthesis](https://arxiv.org/abs/1703.10135)
+2. Will be implemented paper : 
+    - [Maxout Convnet](https://link.springer.com/content/pdf/10.1186%2Fs13636-015-0068-3.pdf)
     
 ### Purposes:
 

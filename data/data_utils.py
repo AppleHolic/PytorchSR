@@ -3,8 +3,8 @@ import numpy as np
 import librosa
 import pyarrow as pa
 from sklearn.model_selection import train_test_split
-from .audio import preemphasis, amp_to_db
-from ..settings.hparam import hparam as hp
+from data.audio import preemphasis, amp_to_db
+from settings.hparam import hparam as hp
 
 
 PHNS = ['h#', 'aa', 'ae', 'ah', 'ao', 'aw', 'ax', 'ax-h', 'axr', 'ay', 'b', 'bcl',

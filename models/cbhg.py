@@ -9,32 +9,31 @@ from models.modules import Prenet, CBHG, SeqLinear
 from settings.hparam import hparam as hp
 
 
-class Net1(nn.Module):
+class CBHGNet(nn.Module):
 
     def __init__(self):
-        super(Net1, self).__init__()
-        self.prenet = Prenet(hp.default.n_mfcc, hp.train1.hidden_units,
-                             hp.train1.hidden_units // 2, dropout_rate=hp.train1.dropout_rate)
+        super(CBHGNet, self).__init__()
+        self.prenet = Prenet(hp.default.n_mfcc, hp.train.hidden_units,
+                             hp.train.hidden_units // 2, dropout_rate=hp.train.dropout_rate)
         self.cbhg = CBHG(
-            K=hp.train1.num_banks,
-            hidden_size=hp.train1.hidden_units // 2,
-            num_highway_blocks=hp.train1.num_highway_blocks,
+            K=hp.train.num_banks,
+            hidden_size=hp.train.hidden_units // 2,
+            num_highway_blocks=hp.train.num_highway_blocks,
             num_gru_layers=1
         )
-        self.output = SeqLinear(hp.train1.hidden_units, len(PHNS))
+        self.output = SeqLinear(hp.train.hidden_units, len(PHNS))
         self.ppg_output = nn.Softmax()
 
     def forward(self, x):
-        # TODO: contiguous? transpose pre-calc
         x = x.contiguous().transpose(1, 2)
-        net = self.prenet(x)  # (N, T, E/2)
+        net = self.prenet(x)
         net, _ = self.cbhg(net)
-        logits_ppg = self.output(net)  # (N, T, V) logit
+        logits_ppg = self.output(net)
         return logits_ppg
 
     @staticmethod
     def calc_output(net):
-        ppgs = F.softmax(net / hp.train1.t, dim=-1)
+        ppgs = F.softmax(net / hp.train.t, dim=-1)
         _, preds_ppg = torch.max(net, dim=-1)  # return arg_max
         return ppgs, preds_ppg
 

@@ -1,3 +1,4 @@
+import os
 import yaml
 
 
@@ -49,8 +50,11 @@ class Hparam(Dotdict):
     __getattr__ = Dotdict.__getitem__
     __setattr__ = Dotdict.__setitem__
     __delattr__ = Dotdict.__delitem__
+    DIR_PATH = os.path.dirname(__file__)
+    DEFAULT_FILE = os.path.join(DIR_PATH, '..', 'hparams/default.yaml')
+    USER_FILE = os.path.join(DIR_PATH, '..', 'hparams/hparams.yaml')
 
-    def set_hparam_yaml(self, case, default_file='hparams/default.yaml', user_file='hparams/hparams.yaml'):
+    def set_hparam_yaml(self, case, default_file=DEFAULT_FILE, user_file=USER_FILE):
         default_hp = load_hparam(default_file)
         user_hp = load_hparam(user_file)
         hp_dict = Dotdict(merge_dict(user_hp[case], default_hp) if case in user_hp else default_hp)

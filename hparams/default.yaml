@@ -47,9 +47,12 @@ train:
     num_epochs: 1000
     save_per_epoch: 2
 ---
-test1:
+test:
     # path
     data_path: '/data/public/rw/datasets/voice_all/timit/TIMIT/TEST/*/*/*.wav'
 
     # test
     batch_size: 32
+
+    # data loader test data path 1
+    test_data_path1: '/data/public/rw/datasets/voice_all/timit/TIMIT/TRAIN/DR5/FDMY0/SA1.wav'

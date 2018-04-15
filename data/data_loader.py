@@ -1,5 +1,5 @@
-from .data_utils import get_wav_data, get_mfccs_phones, load_data
-from ..settings.hparam import hparam as hp
+from data.data_utils import get_wav_data, get_mfccs_phones, load_data
+from settings.hparam import hparam as hp
 from torch.utils.data import Dataset
 
 
@@ -67,6 +67,7 @@ class VoiceData:
 class VoiceDataLoader(Dataset):
 
     def __init__(self, mode='train', data_split=-1.0, init_all=True):
+        self.mode = mode
         self.wav_files = load_data(mode=mode, split=data_split)
         self.idx_list = list(range(len(self.wav_files)))
         self.init_all = init_all

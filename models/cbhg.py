@@ -5,11 +5,12 @@ import numpy as np
 
 from data.data_utils import PHNS
 from data.data_loader import VoiceDataLoader
+from models.model import Model
 from models.modules import Prenet, CBHG, SeqLinear
 from settings.hparam import hparam as hp
 
 
-class CBHGNet(nn.Module):
+class CBHGNet(Model):
 
     def __init__(self):
         super(CBHGNet, self).__init__()
@@ -56,3 +57,7 @@ class CBHGNet(nn.Module):
         num_hits = np.sum(num_hits * target)
         num_targets = np.sum(target)
         return float(num_hits / num_targets), num_hits, num_targets
+
+    @staticmethod
+    def data_loader(mode, split=-1.0):
+        return VoiceDataLoader(mode=mode, data_split=split)

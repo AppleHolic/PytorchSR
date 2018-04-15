@@ -1,0 +1,55 @@
+logdir_path: './logdir'
+log_step: 10
+save_step:
+
+---
+default:
+    sr: 16000
+    frame_shift: 0.005
+    frame_length:  0.025
+    win_length: 400
+    hop_length: 80
+    n_fft: 512
+    preemphasis: 0.97
+    n_mfcc: 40
+    n_iter: 60 # Number of inversion iterations
+    n_mels: 80
+    duration: 2
+    max_db: 35
+    min_db: -55
+    quantize_db: 101
+
+    # model
+    hidden_units: 256  # alias: E
+    num_banks: 16
+    num_highway_blocks: 4
+    norm_type: 'ins'  # a normalizer function. value: bn, ln, ins, or None
+    t: 1.0  # temperature
+    dropout_rate: 0.2
+
+    # train
+    batch_size: 32
+---
+train:
+    # path
+    data_path: '/data/public/rw/datasets/voice_all/timit/TIMIT/TRAIN/*/*/*.wav'
+    # model
+    hidden_units: 256  # alias: E
+    num_banks: 16
+    num_highway_blocks: 4
+    norm_type: 'ins'  # a normalizer function. value: bn, ln, ins, or None
+    t: 1.0  # temperature
+    dropout_rate: 0.2
+
+    # train
+    batch_size: 32
+    lr: 0.0003
+    num_epochs: 1000
+    save_per_epoch: 2
+---
+test1:
+    # path
+    data_path: '/data/public/rw/datasets/voice_all/timit/TIMIT/TEST/*/*/*.wav'
+
+    # test
+    batch_size: 32

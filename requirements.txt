@@ -1,0 +1,9 @@
+numpy >= 1.11.1
+librosa == 0.5.1
+pytorch == 0.3.1
+pyyaml
+soundfile
+pydub
+tqdm
+fire
+pyarrow

@@ -7,7 +7,7 @@
 ### Authors
 
 1. appleholic (choiilji@gmail.com)
-    - Kakaobrain AI Developer at now
+    - [KakaoBrain](http://www.kakaobrain.com/) AI Developer, june.one
 
 ### Implementations
 
@@ -23,9 +23,35 @@
 1. Prenet + CBHG in paper:
     - [Tacotron: Towards End-to-End Speech Synthesis](https://arxiv.org/abs/1703.10135)
 2. Will be implemented paper : 
-    - [Maxout Convnet](https://link.springer.com/content/pdf/10.1186%2Fs13636-015-0068-3.pdf)
+    - [Phone recognition with hierarchical
+convolutional deep maxout networks](https://link.springer.com/content/pdf/10.1186%2Fs13636-015-0068-3.pdf)
     
+---
+
+### Setup and Run
+
+#### Environment
+- python 3.6
+- pytorch 0.3.1
+- hyperparameters with yaml (in hparams folder)
+
+#### Setup
+```
+$ pip install -r requirements.txt
+```
+    
+#### Command
+
+```bash
+$ python run.py --model cbhg
+```
+
+---
+
+
 ### Purposes:
 
 1. Study *Speech Recognition Systems*
 2. *Well define source code structure* in using pytorch 
+
+

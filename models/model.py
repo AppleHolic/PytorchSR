@@ -9,7 +9,7 @@ class Model(nn.Module):
     def __init__(self):
         super(Model, self).__init__()
 
-    @abc.abstracmethod
+    @abc.abstractmethod
     def loss(*args, **kwargs):
         pass
 

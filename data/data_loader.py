@@ -1,6 +1,7 @@
 from data.data_utils import get_wav_data, get_mfccs_phones, load_data
 from settings.hparam import hparam as hp
 from torch.utils.data import Dataset
+from torch import FloatTensor, LongTensor
 
 
 class VoiceData:
@@ -75,7 +76,7 @@ class VoiceDataLoader(Dataset):
     def __getitem__(self, idx):
         wav_file_path = self.wav_files[idx]
         voice_data = VoiceData(wav_file_path, self.mode, init_all=self.init_all)
-        return voice_data.wav(), voice_data.mfcc(), voice_data.phn()
+        return FloatTensor(voice_data.mfcc()), LongTensor(voice_data.phn())
 
     def __len__(self):
         return len(self.idx_list)

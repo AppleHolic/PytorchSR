@@ -27,7 +27,9 @@
     - paper: [Improving speech recognition by revising gated recurrent units](https://arxiv.org/abs/1710.00641)
     - Minimal GRU:
         - Implemented No Reset Gate GRU
-        - TODO:
+        - TODOs:
+            - Cuda Base Implementation
+                - reference impl sample link : [https://github.com/chrischoy/pytorch-custom-cuda-tutorial](https://github.com/chrischoy/pytorch-custom-cuda-tutorial)
             - Recurrent Dropout
 
 ---

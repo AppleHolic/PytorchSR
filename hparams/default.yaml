@@ -42,8 +42,8 @@ train:
     dropout_rate: 0.2
 
     # train
-    batch_size: 32
-    lr: 0.0003
+    batch_size: 128
+    lr: 0.001
     num_epochs: 1000
     save_per_epoch: 2
 ---
@@ -52,7 +52,7 @@ test:
     data_path: '/data/public/rw/datasets/voice_all/timit/TIMIT/TEST/*/*/*.wav'
 
     # test
-    batch_size: 32
+    batch_size: 128
 
     # data loader test data path 1
     test_data_path1: '/data/public/rw/datasets/voice_all/timit/TIMIT/TRAIN/DR5/FDMY0/SA1.wav'

@@ -9,7 +9,7 @@ from settings.hparam import hparam as hp
 class CBHGNet(Model):
 
     def __init__(self):
-        super(CBHGNet, self).__init__()
+        super().__init__()
         self.prenet = Prenet(hp.default.n_mfcc, hp.train.hidden_units,
                              hp.train.hidden_units // 2, dropout_rate=hp.train.dropout_rate)
         self.cbhg = CBHG(

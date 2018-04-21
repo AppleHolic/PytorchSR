@@ -326,21 +326,23 @@ class MinimalGRU(nn.Module):
 
                 hx_outputs = []
 
+                hx_ = hx[layer * self.num_directions + direction]
+
                 # access on sequence
                 for t in range(t_len):
 
                     input = x[:, t, :]
-
                     # GRU Cell Part
                     # make gates
-                    gates = F.linear(input, w_ih, b_ih) + F.linear(hx, w_hh, b_hh)
+                    gates = F.linear(input, w_ih, b_ih) + F.linear(hx_, w_hh, b_hh)
                     ug, og = gates.chunk(2, 1)
 
                     # calc
+                    ug = F.sigmoid(ug)
                     og = self.act(og)
-                    hx = ug * hx + (1 - ug) * og
+                    hx_ = ug * hx_ + (1 - ug) * og
 
-                    hx_outputs.append(hx)
+                    hx_outputs.append(hx_)
 
                 layer_outputs.append(hx_outputs)
 
@@ -351,10 +353,10 @@ class MinimalGRU(nn.Module):
             if len(layer_outputs) == 2:
                 x = []
                 for f, b in zip(*layer_outputs):
-                    x.append(torch.cat([f, b], dim=1).unsqeeze_(1))
-                torch.cat(x, 1, x)
+                    x.append(torch.cat([f, b], dim=1).unsqueeze_(1))
+                x = torch.cat(x, dim=1)
             # single direction
             else:
-                x = torch.cat([item.unsqeeze_(1) for item in layer_outputs[0]], 1)
+                x = torch.cat([item.unsqueeze_(1) for item in layer_outputs[0]], 1)
 
         return x

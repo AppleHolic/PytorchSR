@@ -8,7 +8,7 @@ from settings.hparam import hparam as hp
 
 class Runner:
 
-    IMPLEMENTED_MODELS = ['cbhg']
+    IMPLEMENTED_MODELS = ['cbhg', 'mgru']
 
     def train(self, model, checkpoint='', is_cuda=True, is_multi_gpu=True, logdir='', savedir=''):
         if model not in self.IMPLEMENTED_MODELS:

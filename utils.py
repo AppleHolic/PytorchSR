@@ -2,6 +2,7 @@ import logging
 import torch
 from torch.autograd import Variable
 from models.cbhg import CBHGNet
+from models.mgru import MinimalGRUNet
 from run import Runner
 from trainers.timit import TIMITTrainer
 
@@ -61,6 +62,8 @@ def get_networks(name='cbhg', checkpoint_path='', is_cuda=True, is_multi_gpu=Tru
 
     if name == 'cbhg':
         network = CBHGNet()
+    elif name == 'mgru':
+        network = MinimalGRUNet()
     else:
         raise NotImplementedError('Network %s is not implemented !! ' % name)
 

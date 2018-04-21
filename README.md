@@ -2,31 +2,28 @@
 
 [![license](https://img.shields.io/github/license/mashape/apistatus.svg?maxAge=2592000)](https://github.com/AppleHolic/PytorchSR/LICENSE)
 
----
-
 ### Authors
 
 1. appleholic (choiilji@gmail.com)
-    - [KakaoBrain](http://www.kakaobrain.com/) AI Developer, june.one
+    - Occupation [KakaoBrain](http://www.kakaobrain.com/) AI Developer, june.one
 
 ### Implementations
 
 #### sources
 
-1. Higher Level Implementation with *overrided pytorch utils*
-2. WILL BE UPDATED
-    - Checkpoint plugin
-    - Tensorboard plugin 
+1. Completed to code training template.
+2. TODOS:
+    - evaluate
+    - more papers
     
 #### Phoneme Classification
 
 1. Prenet + CBHG in paper:
-    - [Tacotron: Towards End-to-End Speech Synthesis](https://arxiv.org/abs/1703.10135)
-2. Will be implemented paper : 
-    - [Phone recognition with hierarchical
-convolutional deep maxout networks](https://link.springer.com/content/pdf/10.1186%2Fs13636-015-0068-3.pdf)
-    
----
+    - paper:  [Tacotron: Towards End-to-End Speech Synthesis](https://arxiv.org/abs/1703.10135)
+    - PER : to be reported
+2. Implementing ... :
+    - paper: [Improving speech recognition by revising gated recurrent units](https://arxiv.org/abs/1710.00641)
+    - to be implemented
 
 ### Setup and Run
 
@@ -36,14 +33,15 @@ convolutional deep maxout networks](https://link.springer.com/content/pdf/10.118
 - hyperparameters with yaml (in hparams folder)
 
 #### Setup
-```
+
+```bash
 $ pip install -r requirements.txt
 ```
     
 #### Command
 
 ```bash
-$ python run.py --model cbhg
+$ python run.py train --model cbhg
 ```
 
 ---

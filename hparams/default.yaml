@@ -1,6 +1,6 @@
 logdir_path: './logdir'
 log_step: 10
-save_step:
+num_workers: 16
 
 ---
 default:
@@ -14,7 +14,7 @@ default:
     n_mfcc: 40
     n_iter: 60 # Number of inversion iterations
     n_mels: 80
-    duration: 2
+    duration: 6
     max_db: 35
     min_db: -55
     quantize_db: 101

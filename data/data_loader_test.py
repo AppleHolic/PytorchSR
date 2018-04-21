@@ -1,5 +1,5 @@
 import unittest
-from data.data_loader import VoiceDataLoader, VoiceData
+from data.data_loader import VoiceDataset, VoiceData
 from settings.hparam import hparam as hp
 hp.set_hparam_yaml('test')
 
@@ -20,7 +20,7 @@ class TestDataLoader(unittest.TestCase):
         train_data_1.phn()
 
     def testVoiceDataLoaderTrain(self):
-        data_loader1 = VoiceDataLoader(mode='train')
+        data_loader1 = VoiceDataset(mode='train')
         self.assertEqual(len(data_loader1), self.train_1_size)
         for ds in data_loader1:
             self.assertAlmostEqual(ds[0].mean(), self.train_mean_1, delta=self.delta)

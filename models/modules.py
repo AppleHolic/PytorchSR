@@ -244,7 +244,6 @@ class MinimalGRU(nn.Module):
     Implementation Revising GRU
     Reference : https://arxiv.org/abs/1710.00641
     Reference Source : https://github.com/pytorch/pytorch/blob/master/torch/nn/modules/rnn.py
-
     Differences with original GRU
     1. No reset gate
     """
@@ -352,7 +351,7 @@ class MinimalGRU(nn.Module):
             # bi-direction
             if len(layer_outputs) == 2:
                 x = []
-                for f, b in zip(*layer_outputs):
+                for f, b in zip(layer_outputs[0], layer_outputs[1][::-1]):
                     x.append(torch.cat([f, b], dim=1).unsqueeze_(1))
                 x = torch.cat(x, dim=1)
             # single direction

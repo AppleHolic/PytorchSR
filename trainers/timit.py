@@ -1,6 +1,7 @@
 import time
 import torch
 import utils
+import os
 import numpy as np
 from copy import deepcopy
 from tensorboardX import SummaryWriter
@@ -105,6 +106,10 @@ class TIMITTrainer(Trainer):
             self.best_status['test_acc'] = 0.0
 
         if self.best_status['test_acc'] < self.status['test']['acc'] and self.savedir:
+            # check and make directory
+            if not os.path.exists(self.savedir):
+                os.makedirs(self.savedir)
+
             self.best_status = deepcopy(self.status)
             # save
             state_dict = {
@@ -170,8 +175,6 @@ class TIMITModelInferencer(ModelInferencer):
             module = network.module
         else:
             module = network
-
-        network.eval()
 
         # setup data
         mfccs, phns = list(map(lambda x: utils.to_variable(x, is_cuda), ds))

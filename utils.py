@@ -33,7 +33,7 @@ def get_loadable_checkpoint(checkpoint):
 
 
 def to_variable(tensor, is_cuda=True):
-    result = Variable(tensor)
+    result = Variable(tensor, requires_grad=False)
     if is_cuda:
         return result.cuda()
     else:

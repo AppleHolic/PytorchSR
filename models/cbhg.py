@@ -19,7 +19,6 @@ class CBHGNet(Model):
             num_gru_layers=1
         )
         self.output = SeqLinear(hp.train.hidden_units, len(PHNS))
-        self.ppg_output = nn.Softmax()
 
     def forward(self, x):
         x = x.contiguous().transpose(1, 2)

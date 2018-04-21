@@ -26,7 +26,7 @@ class Model(nn.Module):
             raise NotImplementedError('%s mode is not implemented ! ' % mode)
 
         data_loader = DataLoader(dataset, batch_size=hp.train.batch_size,
-                                 shuffle=(mode == 'train'), num_workers=hp.num_workers)
+                                 shuffle=(mode == 'train'), num_workers=hp.num_workers, drop_last=False)
         return data_loader
 
     @staticmethod

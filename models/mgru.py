@@ -10,7 +10,7 @@ from settings.hparam import hparam as hp
 
 class MinimalGRUNet(Model):
 
-    def __init__(self, is_bidirection=True, num_layers=1, is_cuda=True):
+    def __init__(self, is_bidirection=True, num_layers=4, is_cuda=True):
         super().__init__()
         self.is_bidirection = is_bidirection
         self.hidden_size = hp.train.hidden_units
@@ -22,8 +22,7 @@ class MinimalGRUNet(Model):
         self.mgru = MinimalGRU(hp.default.n_mfcc, self.hidden_size,
                                num_layers=self.num_layers, is_bidirection=self.is_bidirection)
         self.output = SeqLinear(output_hidden_nodes, len(PHNS))
-        self.output_drop = nn.Dropout(0.2)
-        self.ppg_output = nn.Softmax()
+        self.output_drop = nn.Dropout(0.5)
 
     def forward(self, x):
         batch_size = x.size()[0]

@@ -25,7 +25,10 @@
     - PER : to be reported
 2. Revising GRU :
     - paper: [Improving speech recognition by revising gated recurrent units](https://arxiv.org/abs/1710.00641)
-    - to be implemented
+    - Minimal GRU:
+        - Implemented No Reset Gate GRU
+        - TODO:
+            - Recurrent Dropout
 
 ---
 

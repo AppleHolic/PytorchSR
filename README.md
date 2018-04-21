@@ -16,14 +16,18 @@
     - evaluate
     - more papers
     
-#### Phoneme Classification
+#### References
+
+- phoneme classification
 
 1. Prenet + CBHG in paper:
     - paper:  [Tacotron: Towards End-to-End Speech Synthesis](https://arxiv.org/abs/1703.10135)
     - PER : to be reported
-2. Implementing ... :
+2. Revising GRU :
     - paper: [Improving speech recognition by revising gated recurrent units](https://arxiv.org/abs/1710.00641)
     - to be implemented
+
+---
 
 ### Setup and Run
 

@@ -16,10 +16,6 @@ class Model(nn.Module):
     def __init__(self):
         super(Model, self).__init__()
 
-    @abc.abstractmethod
-    def loss(*args, **kwargs):
-        pass
-
     @staticmethod
     def data_loader(mode):
         if mode == 'train':
@@ -32,7 +28,6 @@ class Model(nn.Module):
         data_loader = DataLoader(dataset, batch_size=hp.train.batch_size,
                                  shuffle=(mode == 'train'), num_workers=hp.num_workers)
         return data_loader
-
 
     @staticmethod
     def calc_output(net):

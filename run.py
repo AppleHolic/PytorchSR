@@ -1,65 +1,49 @@
 import fire
-from torch.utils.data import DataLoader
-
 import utils
-import torch.utils.trainer.plugins as plugins
 from torch import optim
-from models.cbhg import CBHGNet
-from models.trainer import CBHGTrainer
+
+from models.model import Model
 from settings.hparam import hparam as hp
 
 
 class Runner:
 
-    def train(self, model, data_split=-1.0, is_cuda=True):
+    IMPLEMENTED_MODELS = ['cbhg']
+
+    def train(self, model, checkpoint='', is_cuda=True, is_multi_gpu=True, logdir='', savedir=''):
+        if model not in self.IMPLEMENTED_MODELS:
+            raise NotImplementedError('%s model is not implemented !' % model)
+
         mode = 'train'
         logger = utils.get_logger(mode)
+
         # initialize hyperparameters
         hp.set_hparam_yaml(mode)
         logger.info('Setup mode as %s, model : %s' % (mode, model))
 
-        # get network and trainer
-        net, custom_trainer = Runner.get_net_and_trainer(model, is_cuda=is_cuda)
+        # get network
+        network = utils.get_networks(model, checkpoint, is_cuda, is_multi_gpu)
 
         # setup dataset
-        dataset = net.data_loader(mode='train', split=data_split)
-        dataset = DataLoader(dataset, batch_size=hp.train.batch_size, shuffle=True, num_workers=16)
+        train_dataloader = Model.data_loader(mode='train')
+        test_dataloader = Model.data_loader(mode='test')
 
-        # setup optimizer
-        if mode == 'train':
-            parameters = net.parameters()
-            logger.info(net)
+        # setup optimizer:
+        parameters = network.parameters()
+        logger.info(network)
+        # TODO: Scheduled LR
         lr = getattr(hp, mode).lr
         optimizer = optim.Adam(parameters, lr=lr)
 
         # pass model, loss, optimizer and dataset to the trainer
-        t = custom_trainer(net, dataset, optimizer, is_cuda=is_cuda)
-
-        # register some monitoring plugins
-        t.register_plugin(plugins.ProgressMonitor())
-        t.register_plugin(utils.CBHGAccuracyMonitor())
-        t.register_plugin(plugins.LossMonitor())
-        t.register_plugin(plugins.TimeMonitor())
-        t.register_plugin(plugins.Logger(['progress', 'accuracy', 'loss', 'time']))
+        # get trainer
+        trainer = utils.get_trainer()(network, optimizer, train_dataloader, test_dataloader, is_cuda, logdir, savedir)
 
         # train!
-        t.run(hp.train.num_epochs)
-
-    def test(self):
-        raise NotImplementedError('Test mode is not implemented!')
+        trainer.run(hp.train.num_epochs)
 
     def eval(self):
         raise NotImplementedError('Evaluation mode is not implemented!')
-
-    @staticmethod
-    def get_net_and_trainer(model, is_cuda=True):
-        if model == 'cbhg':
-            net, trainer = CBHGNet(), CBHGTrainer
-            if is_cuda:
-                net = net.cuda()
-            return net, trainer
-        else:
-            raise NotImplementedError('The model %s is not implemented yet!' % model)
 
 
 if __name__ == '__main__':

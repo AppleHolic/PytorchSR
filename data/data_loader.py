@@ -65,7 +65,7 @@ class VoiceData:
         return self.spec
 
 
-class VoiceDataLoader(Dataset):
+class VoiceDataset(Dataset):
 
     def __init__(self, mode='train', data_split=-1.0, init_all=True):
         self.mode = mode
@@ -80,3 +80,21 @@ class VoiceDataLoader(Dataset):
 
     def __len__(self):
         return len(self.idx_list)
+
+
+class TrainVoiceDataset(VoiceDataset):
+
+    def __init__(self, init_all=True):
+        super().__init__(
+            mode='train',
+            init_all=init_all
+        )
+
+
+class TestVoiceDataset(VoiceDataset):
+
+    def __init__(self, init_all=True):
+        super().__init__(
+            mode='test',
+            init_all=init_all
+        )

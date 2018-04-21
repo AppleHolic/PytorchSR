@@ -1,9 +1,9 @@
 import logging
-
+import torch
 from torch.autograd import Variable
-from torch.utils.trainer.plugins.monitor import Monitor
-
 from models.cbhg import CBHGNet
+from run import Runner
+from trainers.timit import TIMITTrainer
 
 
 def get_logger(name):
@@ -31,20 +31,47 @@ def get_loadable_checkpoint(checkpoint):
     return new_checkpoint
 
 
-class CBHGAccuracyMonitor(Monitor):
-    stat_name = 'accuracy'
+def to_variable(tensor, is_cuda=True):
+    result = Variable(tensor)
+    if is_cuda:
+        return result.cuda()
+    else:
+        return result
 
-    def __init__(self, *args, is_cuda=True, **kwargs):
-        kwargs.setdefault('unit', '%')
-        kwargs.setdefault('precision', 2)
-        self.is_cuda = is_cuda
-        super(CBHGAccuracyMonitor, self).__init__(*args, **kwargs)
 
-    def _get_value(self, iteration, input, target, output, loss):
-        mfcc, phn = input, target
-        output = Variable(output)
-        if self.is_cuda:
-            output = output.cuda()
-        ppgs, preds_ppg = CBHGNet.calc_output(output)
-        accuracy, cor, nb = CBHGNet.accuracy(preds_ppg, phn)
-        return accuracy
+def get_trainer(name='cbhg'):
+    if name not in Runner.IMPLEMENTED_MODELS:
+        raise NotImplementedError('Trainer for %s is not implemented !! ' % name)
+
+    if name == 'cbhg':
+        return TIMITTrainer
+    else:
+        return None
+
+
+def get_networks(name='cbhg', checkpoint_path='', is_cuda=True, is_multi_gpu=True):
+    """
+
+    :param name: the name of network
+    :param checkpoint_path: checkpoint path if you want to load checkpoint
+    :param is_cuda: usage of cuda
+    :param is_multi_gpu: check multi gpu
+    :return: network, pretrained step
+    """
+
+    if name == 'cbhg':
+        network = CBHGNet()
+    else:
+        raise NotImplementedError('Network %s is not implemented !! ' % name)
+
+    if checkpoint_path:
+        checkpoint = torch.load(checkpoint_path)
+        network.load_state_dict(get_loadable_checkpoint(checkpoint['net']))
+
+    if is_cuda:
+        network = network.cuda()
+
+    if is_multi_gpu:
+        network = torch.nn.DataParallel(network)
+
+    return network

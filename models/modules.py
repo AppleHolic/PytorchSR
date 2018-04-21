@@ -1,10 +1,11 @@
 import torch
-from torch.autograd import Variable
+import math
 import torch.nn as nn
 import torch.nn.functional as F
-from collections import OrderedDict
 import numpy as np
 import settings.hparam as hp
+from torch.autograd import Variable
+from collections import OrderedDict
 
 
 class SeqLinear(nn.Module):
@@ -236,3 +237,126 @@ class Conv1d(nn.Conv1d):
             conv = self.drop(conv)
 
         return conv
+
+
+class MinimalGRU(nn.Module):
+    """
+    Implementation Revising GRU
+    Reference : https://arxiv.org/abs/1710.00641
+    Reference Source : https://github.com/pytorch/pytorch/blob/master/torch/nn/modules/rnn.py
+
+    Differences with original GRU
+    1. No reset gate
+    """
+
+    def __init__(self, input_size, hidden_size, num_layers=1, is_bidirection=False,
+                 bias=True, dropout=0, nonlinearity='relu'):
+        super().__init__()
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.dropout = dropout
+        self.num_layers = num_layers
+        self.num_directions = 2 if is_bidirection else 1
+        self.bias = bias
+        # setup nonlinearity
+        if nonlinearity == 'relu':
+            self.act = nn.ReLU()
+        elif nonlinearity == 'tanh':
+            self.act = nn.Tanh()
+        else:
+            raise NotImplementedError('%s nonlinearity is not implemented !!' % nonlinearity)
+
+        gate_size = 2 * hidden_size
+
+        self._all_weights = []
+        for layer in range(num_layers):
+            for direction in range(self.num_directions):
+                layer_input_size = input_size if layer == 0 else hidden_size * self.num_directions
+
+                w_ih = nn.Parameter(torch.Tensor(gate_size, layer_input_size))
+                w_hh = nn.Parameter(torch.Tensor(gate_size, hidden_size))
+                b_ih = nn.Parameter(torch.Tensor(gate_size))
+                b_hh = nn.Parameter(torch.Tensor(gate_size))
+                layer_params = (w_ih, w_hh, b_ih, b_hh)
+
+                suffix = '_reverse' if direction == 1 else ''
+                param_names = ['weight_ih_l{}{}', 'weight_hh_l{}{}']
+                if bias:
+                    param_names += ['bias_ih_l{}{}', 'bias_hh_l{}{}']
+                param_names = [x.format(layer, suffix) for x in param_names]
+
+                for name, param in zip(param_names, layer_params):
+                    setattr(self, name, param)
+                self._all_weights.append(param_names)
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        """
+        https://github.com/pytorch/pytorch/blob/7b6b7d4575832a9af4257ba341f3da9e7a2a2b57/torch/nn/modules/rnn.py#L115
+        """
+        stdv = 1.0 / math.sqrt(self.hidden_size)
+        for weight in self.parameters():
+            weight.data.uniform_(-stdv, stdv)
+
+    def forward(self, x, hx, time_dim=1):
+        """
+        Custom GRU Layers with gru cell in source
+        :param x: sequence data
+        :param hx: initial hidden status
+        :param time_dim: the time axis on input data (default is 1)
+        :return:
+        """
+        assert time_dim == 1
+
+        t_len = x.size()[time_dim]
+
+        for layer in range(self.num_layers):
+
+            layer_outputs = []
+
+            for direction in range(self.num_directions):
+
+                # get attrs
+                weight_attr_names = self._all_weights[layer * self.num_directions + direction]
+                attrs = [getattr(self, name) for name in weight_attr_names]
+                if self.bias:
+                    w_ih, w_hh, b_ih, b_hh = attrs
+                else:
+                    w_ih, w_hh, b_ih, b_hh = attrs + [None, None]
+
+                hx_outputs = []
+
+                hx_ = hx[layer * self.num_directions + direction]
+
+                # access on sequence
+                for t in range(t_len):
+
+                    input = x[:, t, :]
+                    # GRU Cell Part
+                    # make gates
+                    gates = F.linear(input, w_ih, b_ih) + F.linear(hx_, w_hh, b_hh)
+                    ug, og = gates.chunk(2, 1)
+
+                    # calc
+                    ug = F.sigmoid(ug)
+                    og = self.act(og)
+                    hx_ = ug * hx_ + (1 - ug) * og
+
+                    hx_outputs.append(hx_)
+
+                layer_outputs.append(hx_outputs)
+
+            assert len(layer_outputs) in [1, 2]
+
+            # make output or next input
+            # bi-direction
+            if len(layer_outputs) == 2:
+                x = []
+                for f, b in zip(*layer_outputs):
+                    x.append(torch.cat([f, b], dim=1).unsqueeze_(1))
+                x = torch.cat(x, dim=1)
+            # single direction
+            else:
+                x = torch.cat([item.unsqueeze_(1) for item in layer_outputs[0]], 1)
+
+        return x

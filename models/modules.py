@@ -247,9 +247,11 @@ class MinimalGRU(nn.Module):
     Differences with original GRU
     1. No reset gate
     """
+    # TODO: Recurrent Dropout
+    # TODO: Batch Normalization on linear computation
 
-    def __init__(self, input_size, hidden_size, num_layers=1, is_bidirection=False,
-                 bias=True, dropout=0, nonlinearity='relu'):
+    def __init__(self, input_size, hidden_size, max_len, num_layers=1, is_bidirection=False,
+                 bias=True, dropout=0, nonlinearity='relu', is_norm=True):
         super().__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -257,6 +259,15 @@ class MinimalGRU(nn.Module):
         self.num_layers = num_layers
         self.num_directions = 2 if is_bidirection else 1
         self.bias = bias
+        self.is_norm = is_norm
+        # handle dropout boundary exception
+        if self.dropout < 0 or self.dropout > 1:
+            raise ValueError('Dropout %.6f is not valid value!' % self.dropout)
+        elif self.dropout:
+            self.drop_modules = nn.ModuleList()
+        if self.is_norm:
+            self.i_norm_list = nn.ModuleList()
+            self.h_norm_list = nn.ModuleList()
         # setup nonlinearity
         if nonlinearity == 'relu':
             self.act = nn.ReLU()
@@ -276,12 +287,20 @@ class MinimalGRU(nn.Module):
                 w_hh = nn.Parameter(torch.Tensor(gate_size, hidden_size))
                 b_ih = nn.Parameter(torch.Tensor(gate_size))
                 b_hh = nn.Parameter(torch.Tensor(gate_size))
-                layer_params = (w_ih, w_hh, b_ih, b_hh)
+                drop_mask = nn.Parameter(torch.ones(gate_size), requires_grad=False)
+
+                layer_params = (w_ih, w_hh, b_ih, b_hh, drop_mask)
 
                 suffix = '_reverse' if direction == 1 else ''
                 param_names = ['weight_ih_l{}{}', 'weight_hh_l{}{}']
                 if bias:
                     param_names += ['bias_ih_l{}{}', 'bias_hh_l{}{}']
+                if self.dropout:
+                    param_names += ['drop_mask_l{}{}']
+                    self.drop_modules.append(nn.Dropout(self.dropout))
+                if self.is_norm:
+                    self.i_norm_list.append(SeparatedBatchNorm1d(gate_size, max_length=max_len))
+                    self.h_norm_list.append(SeparatedBatchNorm1d(gate_size, max_length=max_len))
                 param_names = [x.format(layer, suffix) for x in param_names]
 
                 for name, param in zip(param_names, layer_params):
@@ -295,6 +314,8 @@ class MinimalGRU(nn.Module):
         """
         stdv = 1.0 / math.sqrt(self.hidden_size)
         for weight in self.parameters():
+            if not weight.requires_grad:
+                continue
             weight.data.uniform_(-stdv, stdv)
 
     def forward(self, x, hx, time_dim=1):
@@ -319,9 +340,20 @@ class MinimalGRU(nn.Module):
                 weight_attr_names = self._all_weights[layer * self.num_directions + direction]
                 attrs = [getattr(self, name) for name in weight_attr_names]
                 if self.bias:
-                    w_ih, w_hh, b_ih, b_hh = attrs
+                    if self.dropout:
+                        w_ih, w_hh, b_ih, b_hh, mask = attrs
+                    else:
+                        w_ih, w_hh, b_ih, b_hh = attrs
                 else:
-                    w_ih, w_hh, b_ih, b_hh = attrs + [None, None]
+                    if self.dropout:
+                        w_ih, w_hh, mask, b_ih, b_hh = attrs + [None, None]
+                    else:
+                        w_ih, w_hh, b_ih, b_hh = attrs + [None, None]
+
+                if self.dropout:
+                    mask = self.drop_modules[layer * self.num_directions + direction](mask)
+                else:
+                    mask = 1.
 
                 hx_outputs = []
 
@@ -333,7 +365,14 @@ class MinimalGRU(nn.Module):
                     input = x[:, t, :]
                     # GRU Cell Part
                     # make gates
-                    gates = F.linear(input, w_ih, b_ih) + F.linear(hx_, w_hh, b_hh)
+                    in_part = F.linear(input, w_ih, b_ih)
+                    h_part = F.linear(hx_, w_hh, b_hh)
+                    if self.is_norm:
+                        in_part = self.i_norm_list[layer * self.num_directions + direction](in_part, t)
+                        h_part = self.h_norm_list[layer * self.num_directions + direction](h_part, t)
+                    gates = in_part + h_part
+                    # recurrent dropout
+                    gates *= mask
                     ug, og = gates.chunk(2, 1)
 
                     # calc
@@ -350,12 +389,86 @@ class MinimalGRU(nn.Module):
             # make output or next input
             # bi-direction
             if len(layer_outputs) == 2:
+                # TODO: Why this computation flow occurs gradient computation err?
+                # f_cat, b_cat = [], []
+                # for idx in range(len(layer_outputs[0])):
+                #     f_cat.append(layer_outputs[0][idx].unsqueeze_(1))
+                #     b_cat.append(layer_outputs[1][-(idx+1)].unsqueeze_(1))
+                # f_cat = torch.cat(f_cat, dim=1)
+                # b_cat = torch.cat(b_cat, dim=1)
+                # x = torch.cat([f_cat, b_cat], dim=2)
                 x = []
                 for f, b in zip(layer_outputs[0], layer_outputs[1][::-1]):
                     x.append(torch.cat([f, b], dim=1).unsqueeze_(1))
                 x = torch.cat(x, dim=1)
+
             # single direction
             else:
                 x = torch.cat([item.unsqueeze_(1) for item in layer_outputs[0]], 1)
 
         return x
+
+
+class SeparatedBatchNorm1d(nn.Module):
+
+    """
+    A batch normalization module which keeps its running mean
+    and variance separately per timestep.
+    """
+
+    def __init__(self, num_features, max_length, eps=1e-5, momentum=0.1,
+                 affine=True):
+        """
+        Most parts are copied from
+        torch.nn.modules.batchnorm._BatchNorm.
+        """
+
+        super().__init__()
+        self.num_features = num_features
+        self.max_length = max_length
+        self.affine = affine
+        self.eps = eps
+        self.momentum = momentum
+        if self.affine:
+            self.weight = nn.Parameter(torch.FloatTensor(num_features))
+            self.bias = nn.Parameter(torch.FloatTensor(num_features))
+        else:
+            self.register_parameter('weight', None)
+            self.register_parameter('bias', None)
+        for i in range(max_length):
+            self.register_buffer(
+                'running_mean_{}'.format(i), torch.zeros(num_features))
+            self.register_buffer(
+                'running_var_{}'.format(i), torch.ones(num_features))
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        for i in range(self.max_length):
+            running_mean_i = getattr(self, 'running_mean_{}'.format(i))
+            running_var_i = getattr(self, 'running_var_{}'.format(i))
+            running_mean_i.zero_()
+            running_var_i.fill_(1)
+        if self.affine:
+            self.weight.data.uniform_()
+            self.bias.data.zero_()
+
+    def _check_input_dim(self, input_):
+        if input_.size(1) != self.running_mean_0.nelement():
+            raise ValueError('got {}-feature tensor, expected {}'
+                             .format(input_.size(1), self.num_features))
+
+    def forward(self, input_, time):
+        self._check_input_dim(input_)
+        if time >= self.max_length:
+            time = self.max_length - 1
+        running_mean = getattr(self, 'running_mean_{}'.format(time))
+        running_var = getattr(self, 'running_var_{}'.format(time))
+        return F.batch_norm(
+            input=input_, running_mean=running_mean, running_var=running_var,
+            weight=self.weight, bias=self.bias, training=self.training,
+            momentum=self.momentum, eps=self.eps)
+
+    def __repr__(self):
+        return ('{name}({num_features}, eps={eps}, momentum={momentum},'
+                ' max_length={max_length}, affine={affine})'
+                .format(name=self.__class__.__name__, **self.__dict__))

@@ -33,7 +33,7 @@ class Runner:
         logger.info(network)
         # TODO: Scheduled LR
         lr = getattr(hp, mode).lr
-        optimizer = optim.Adam(parameters, lr=lr)
+        optimizer = optim.Adam([p for p in parameters if p.requires_grad], lr=lr)
 
         # pass model, loss, optimizer and dataset to the trainer
         # get trainer

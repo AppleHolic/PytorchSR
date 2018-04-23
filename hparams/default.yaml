@@ -1,6 +1,7 @@
 logdir_path: './logdir'
 log_step: 1
 num_workers: 16
+max_len: 2000
 
 ---
 default:

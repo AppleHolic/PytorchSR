@@ -247,6 +247,8 @@ class MinimalGRU(nn.Module):
     Differences with original GRU
     1. No reset gate
     """
+    # TODO: Recurrent Dropout
+    # TODO: Batch Normalization on linear computation
 
     def __init__(self, input_size, hidden_size, num_layers=1, is_bidirection=False,
                  bias=True, dropout=0, nonlinearity='relu'):

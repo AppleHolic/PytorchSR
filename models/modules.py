@@ -350,10 +350,19 @@ class MinimalGRU(nn.Module):
             # make output or next input
             # bi-direction
             if len(layer_outputs) == 2:
+                # TODO: Why this computation flow occurs gradient computation err?
+                # f_cat, b_cat = [], []
+                # for idx in range(len(layer_outputs[0])):
+                #     f_cat.append(layer_outputs[0][idx].unsqueeze_(1))
+                #     b_cat.append(layer_outputs[1][-(idx+1)].unsqueeze_(1))
+                # f_cat = torch.cat(f_cat, dim=1)
+                # b_cat = torch.cat(b_cat, dim=1)
+                # x = torch.cat([f_cat, b_cat], dim=2)
                 x = []
                 for f, b in zip(layer_outputs[0], layer_outputs[1][::-1]):
                     x.append(torch.cat([f, b], dim=1).unsqueeze_(1))
                 x = torch.cat(x, dim=1)
+
             # single direction
             else:
                 x = torch.cat([item.unsqueeze_(1) for item in layer_outputs[0]], 1)

@@ -251,7 +251,7 @@ class MinimalGRU(nn.Module):
     # TODO: Batch Normalization on linear computation
 
     def __init__(self, input_size, hidden_size, num_layers=1, is_bidirection=False,
-                 bias=True, dropout=0, nonlinearity='relu'):
+                 bias=True, dropout=0, nonlinearity='relu', is_norm=True):
         super().__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -259,11 +259,15 @@ class MinimalGRU(nn.Module):
         self.num_layers = num_layers
         self.num_directions = 2 if is_bidirection else 1
         self.bias = bias
+        self.is_norm = is_norm
         # handle dropout boundary exception
         if self.dropout < 0 or self.dropout > 1:
             raise ValueError('Dropout %.6f is not valid value!' % self.dropout)
         elif self.dropout:
             self.drop_modules = nn.ModuleList()
+        if self.is_norm:
+            self.i_norm_list = nn.ModuleList()
+            self.h_norm_list = nn.ModuleList()
         # setup nonlinearity
         if nonlinearity == 'relu':
             self.act = nn.ReLU()
@@ -294,6 +298,9 @@ class MinimalGRU(nn.Module):
                 if self.dropout:
                     param_names += ['drop_mask_l{}{}']
                     self.drop_modules.append(nn.Dropout(self.dropout))
+                if self.is_norm:
+                    self.i_norm_list.append(nn.BatchNorm1d(gate_size))
+                    self.h_norm_list.append(nn.BatchNorm1d(gate_size))
                 param_names = [x.format(layer, suffix) for x in param_names]
 
                 for name, param in zip(param_names, layer_params):
@@ -358,7 +365,13 @@ class MinimalGRU(nn.Module):
                     input = x[:, t, :]
                     # GRU Cell Part
                     # make gates
-                    gates = F.linear(input, w_ih, b_ih) + F.linear(hx_, w_hh, b_hh)
+                    in_part = F.linear(input, w_ih, b_ih)
+                    h_part = F.linear(hx_, w_hh, b_hh)
+                    if self.is_norm:
+                        in_part = self.i_norm_list[layer * self.num_directions + direction](in_part)
+                        h_part = self.h_norm_list[layer * self.num_directions + direction](h_part)
+                    gates = in_part + h_part
+                    # recurrent dropout
                     gates *= mask
                     ug, og = gates.chunk(2, 1)
 

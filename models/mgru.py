@@ -20,7 +20,7 @@ class MinimalGRUNet(Model):
         output_hidden_nodes = self.hidden_size * 2 if is_bidirection else self.hidden_size
 
         self.mgru = MinimalGRU(hp.default.n_mfcc, self.hidden_size,
-                               num_layers=self.num_layers, is_bidirection=self.is_bidirection, dropout=0.2)
+                               num_layers=self.num_layers, is_bidirection=self.is_bidirection, dropout=0.1)
         self.output = SeqLinear(output_hidden_nodes, len(PHNS))
         self.output_drop = nn.Dropout(0.5)
 

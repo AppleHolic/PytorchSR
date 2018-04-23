@@ -259,6 +259,11 @@ class MinimalGRU(nn.Module):
         self.num_layers = num_layers
         self.num_directions = 2 if is_bidirection else 1
         self.bias = bias
+        # handle dropout boundary exception
+        if self.dropout < 0 or self.dropout > 1:
+            raise ValueError('Dropout %.6f is not valid value!' % self.dropout)
+        elif self.dropout:
+            self.drop_modules = nn.ModuleList()
         # setup nonlinearity
         if nonlinearity == 'relu':
             self.act = nn.ReLU()
@@ -278,12 +283,17 @@ class MinimalGRU(nn.Module):
                 w_hh = nn.Parameter(torch.Tensor(gate_size, hidden_size))
                 b_ih = nn.Parameter(torch.Tensor(gate_size))
                 b_hh = nn.Parameter(torch.Tensor(gate_size))
-                layer_params = (w_ih, w_hh, b_ih, b_hh)
+                drop_mask = nn.Parameter(torch.ones(gate_size), requires_grad=False)
+
+                layer_params = (w_ih, w_hh, b_ih, b_hh, drop_mask)
 
                 suffix = '_reverse' if direction == 1 else ''
                 param_names = ['weight_ih_l{}{}', 'weight_hh_l{}{}']
                 if bias:
                     param_names += ['bias_ih_l{}{}', 'bias_hh_l{}{}']
+                if self.dropout:
+                    param_names += ['drop_mask_l{}{}']
+                    self.drop_modules.append(nn.Dropout(self.dropout))
                 param_names = [x.format(layer, suffix) for x in param_names]
 
                 for name, param in zip(param_names, layer_params):
@@ -297,6 +307,8 @@ class MinimalGRU(nn.Module):
         """
         stdv = 1.0 / math.sqrt(self.hidden_size)
         for weight in self.parameters():
+            if not weight.requires_grad:
+                continue
             weight.data.uniform_(-stdv, stdv)
 
     def forward(self, x, hx, time_dim=1):
@@ -321,9 +333,20 @@ class MinimalGRU(nn.Module):
                 weight_attr_names = self._all_weights[layer * self.num_directions + direction]
                 attrs = [getattr(self, name) for name in weight_attr_names]
                 if self.bias:
-                    w_ih, w_hh, b_ih, b_hh = attrs
+                    if self.dropout:
+                        w_ih, w_hh, b_ih, b_hh, mask = attrs
+                    else:
+                        w_ih, w_hh, b_ih, b_hh = attrs
                 else:
-                    w_ih, w_hh, b_ih, b_hh = attrs + [None, None]
+                    if self.dropout:
+                        w_ih, w_hh, mask, b_ih, b_hh = attrs + [None, None]
+                    else:
+                        w_ih, w_hh, b_ih, b_hh = attrs + [None, None]
+
+                if self.dropout:
+                    mask = self.drop_modules[layer * self.num_directions + direction](mask)
+                else:
+                    mask = 1.
 
                 hx_outputs = []
 
@@ -336,6 +359,7 @@ class MinimalGRU(nn.Module):
                     # GRU Cell Part
                     # make gates
                     gates = F.linear(input, w_ih, b_ih) + F.linear(hx_, w_hh, b_hh)
+                    gates *= mask
                     ug, og = gates.chunk(2, 1)
 
                     # calc

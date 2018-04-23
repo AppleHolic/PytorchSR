@@ -250,7 +250,7 @@ class MinimalGRU(nn.Module):
     # TODO: Recurrent Dropout
     # TODO: Batch Normalization on linear computation
 
-    def __init__(self, input_size, hidden_size, num_layers=1, is_bidirection=False,
+    def __init__(self, input_size, hidden_size, max_len, num_layers=1, is_bidirection=False,
                  bias=True, dropout=0, nonlinearity='relu', is_norm=True):
         super().__init__()
         self.input_size = input_size
@@ -299,8 +299,8 @@ class MinimalGRU(nn.Module):
                     param_names += ['drop_mask_l{}{}']
                     self.drop_modules.append(nn.Dropout(self.dropout))
                 if self.is_norm:
-                    self.i_norm_list.append(nn.BatchNorm1d(gate_size))
-                    self.h_norm_list.append(nn.BatchNorm1d(gate_size))
+                    self.i_norm_list.append(SeparatedBatchNorm1d(gate_size, max_length=max_len))
+                    self.h_norm_list.append(SeparatedBatchNorm1d(gate_size, max_length=max_len))
                 param_names = [x.format(layer, suffix) for x in param_names]
 
                 for name, param in zip(param_names, layer_params):
@@ -368,8 +368,8 @@ class MinimalGRU(nn.Module):
                     in_part = F.linear(input, w_ih, b_ih)
                     h_part = F.linear(hx_, w_hh, b_hh)
                     if self.is_norm:
-                        in_part = self.i_norm_list[layer * self.num_directions + direction](in_part)
-                        h_part = self.h_norm_list[layer * self.num_directions + direction](h_part)
+                        in_part = self.i_norm_list[layer * self.num_directions + direction](in_part, t)
+                        h_part = self.h_norm_list[layer * self.num_directions + direction](h_part, t)
                     gates = in_part + h_part
                     # recurrent dropout
                     gates *= mask
@@ -407,3 +407,68 @@ class MinimalGRU(nn.Module):
                 x = torch.cat([item.unsqueeze_(1) for item in layer_outputs[0]], 1)
 
         return x
+
+
+class SeparatedBatchNorm1d(nn.Module):
+
+    """
+    A batch normalization module which keeps its running mean
+    and variance separately per timestep.
+    """
+
+    def __init__(self, num_features, max_length, eps=1e-5, momentum=0.1,
+                 affine=True):
+        """
+        Most parts are copied from
+        torch.nn.modules.batchnorm._BatchNorm.
+        """
+
+        super().__init__()
+        self.num_features = num_features
+        self.max_length = max_length
+        self.affine = affine
+        self.eps = eps
+        self.momentum = momentum
+        if self.affine:
+            self.weight = nn.Parameter(torch.FloatTensor(num_features))
+            self.bias = nn.Parameter(torch.FloatTensor(num_features))
+        else:
+            self.register_parameter('weight', None)
+            self.register_parameter('bias', None)
+        for i in range(max_length):
+            self.register_buffer(
+                'running_mean_{}'.format(i), torch.zeros(num_features))
+            self.register_buffer(
+                'running_var_{}'.format(i), torch.ones(num_features))
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        for i in range(self.max_length):
+            running_mean_i = getattr(self, 'running_mean_{}'.format(i))
+            running_var_i = getattr(self, 'running_var_{}'.format(i))
+            running_mean_i.zero_()
+            running_var_i.fill_(1)
+        if self.affine:
+            self.weight.data.uniform_()
+            self.bias.data.zero_()
+
+    def _check_input_dim(self, input_):
+        if input_.size(1) != self.running_mean_0.nelement():
+            raise ValueError('got {}-feature tensor, expected {}'
+                             .format(input_.size(1), self.num_features))
+
+    def forward(self, input_, time):
+        self._check_input_dim(input_)
+        if time >= self.max_length:
+            time = self.max_length - 1
+        running_mean = getattr(self, 'running_mean_{}'.format(time))
+        running_var = getattr(self, 'running_var_{}'.format(time))
+        return F.batch_norm(
+            input=input_, running_mean=running_mean, running_var=running_var,
+            weight=self.weight, bias=self.bias, training=self.training,
+            momentum=self.momentum, eps=self.eps)
+
+    def __repr__(self):
+        return ('{name}({num_features}, eps={eps}, momentum={momentum},'
+                ' max_length={max_length}, affine={affine})'
+                .format(name=self.__class__.__name__, **self.__dict__))
